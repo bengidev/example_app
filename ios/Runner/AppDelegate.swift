@@ -147,11 +147,11 @@ extension AppDelegate: BetaTestDelegate {
     // Show cached results that will be sent to Flutter
     if let cached = cachedResults {
       print("Cached results available:")
-      print("  - Completed: \(cached['completed'] ?? false)")
-      print("  - Results count: \((cached['results'] as? [[String: Any]])?.count ?? 0)")
-      if let results = cached['results'] as? [[String: Any]] {
+      print("  - Completed: \(cached["completed"] ?? false)")
+      print("  - Results count: \((cached["results"] as? [[String: Any]])?.count ?? 0)")
+      if let results = cached["results"] as? [[String: Any]] {
         for result in results {
-          print("    • \(result['title'] ?? 'Unknown'): \(result['state'] ?? 'unknown')")
+          print("    • \(result["title"] ?? "Unknown"): \(result["state"] ?? "unknown")")
         }
       }
     } else {
