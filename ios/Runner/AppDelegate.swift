@@ -209,6 +209,18 @@ extension AppDelegate: BetaTestDelegate {
     // after the native UI is dismissed, to ensure proper flow.
   }
   
+  
+  func willStartAllTests() {
+    // DEBUG: Called when user taps "Mulai Tes" (Start Test) button
+    print("=== willStartAllTests called - Hiding back button ===")
+    
+    // Hide back button when tests start - user must complete the process
+    if let betaTest = betaTestViewController {
+      betaTest.navigationItem.hidesBackButton = true
+      print("Back button hidden - user must complete diagnostics")
+    }
+  }
+  
   func willFinishBetaTestFromFlutter() {
     // DEBUG: Called when user taps "Lanjut" (Continue) button in native UI
     print("=== willFinishBetaTestFromFlutter called ===")
