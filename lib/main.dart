@@ -242,6 +242,14 @@ class _TradeInHomePageState extends State<TradeInHomePage>
               delegate: SliverChildListDelegate([
                 // Action Card
                 Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(
+                      color: const Color(0xFF0D7377).withOpacity(0.15),
+                      width: 1.5,
+                    ),
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(28),
                     child: Column(
@@ -471,6 +479,14 @@ class _TradeInHomePageState extends State<TradeInHomePage>
 
             // Results List
             Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: const Color(0xFF0D7377).withOpacity(0.15),
+                  width: 1.5,
+                ),
+              ),
               child: Column(
                 children: resultsList.asMap().entries.map((entry) {
                   final index = entry.key;
