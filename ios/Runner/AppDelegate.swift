@@ -110,11 +110,17 @@ extension AppDelegate: UIAdaptivePresentationControllerDelegate {
 extension AppDelegate: BetaTestDelegate {
   
   func didCompleteAllTests(with results: [BetaTestViewController.ProcessResult]) {
+    // DEBUG: Print raw results from TradeInFramework
+    print("=== TradeInFramework Results ===")
+    print("Total tests completed: \(results.count)")
+    
     let resultsArray = results.map { result -> [String: Any] in
+      let stateString = result.state == .success ? "success" : "failed"
+      print("Test #\(result.index): \(result.title) -> \(stateString)")
       return [
         "index": result.index,
         "title": result.title,
-        "state": result.state == .success ? "success" : "failed"
+        "state": stateString
       ]
     }
     
@@ -122,6 +128,11 @@ extension AppDelegate: BetaTestDelegate {
       "results": resultsArray,
       "completed": true
     ]
+    
+    // DEBUG: Print final response to Flutter
+    print("=== Sending to Flutter ===")
+    print("Response: \(response)")
+    print("=========================")
     
     cachedResults = response
     pendingResult?(response)

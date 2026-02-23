@@ -81,6 +81,19 @@ class _TradeInHomePageState extends State<TradeInHomePage>
       final channel = TradeInChannel();
       final result = await channel.startTradeIn();
 
+      // DEBUG: Print received results from native
+      debugPrint('=== Flutter Received Results ===');
+      debugPrint('Raw result: $result');
+      debugPrint('Completed: ${result['completed']}');
+      debugPrint('Cancelled: ${result['cancelled']}');
+      debugPrint('Results count: ${(result['results'] as List?)?.length ?? 0}');
+      if (result['results'] != null) {
+        for (var item in result['results']) {
+          debugPrint('  - ${item['title']}: ${item['state']}');
+        }
+      }
+      debugPrint('================================');
+
       if (mounted) {
         // Check if user cancelled the operation
         final bool wasCancelled = result['cancelled'] == true;
@@ -98,8 +111,6 @@ class _TradeInHomePageState extends State<TradeInHomePage>
           });
           _animationController.forward(from: 0);
         }
-
-        print("Trade-in results: $result");
       }
     } on PlatformException catch (e) {
       if (mounted) {
