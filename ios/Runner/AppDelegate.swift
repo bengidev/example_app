@@ -174,11 +174,20 @@ extension AppDelegate: BetaTestDelegate {
     // DEBUG: Called when user taps "Lanjut" (Continue) button in native UI
     print("=== willFinishBetaTestFromFlutter called ===")
     
-    // Dismiss the view controller and send results after animation completes
-    window?.rootViewController?.dismiss(animated: true) { [weak self] in
+    // Get navigation controller and pop BetaTest from the stack
+    guard let navigationController = window?.rootViewController as? UINavigationController else {
+      print("ERROR: Navigation controller not found")
+      return
+    }
+    
+    // Pop BetaTest view controller to return to Flutter
+    navigationController.popViewController(animated: true)
+    
+    // Send results after a short delay to allow animation to complete
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
       guard let self = self else { return }
       
-      print("=== Native UI dismissed, sending results to Flutter ===")
+      print("=== BetaTest popped from navigation stack, sending results to Flutter ===")
       
       // Send cached results to Flutter after dismissal completes
       if let cached = self.cachedResults {
