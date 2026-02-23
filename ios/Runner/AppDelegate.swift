@@ -110,13 +110,12 @@ extension AppDelegate: UIAdaptivePresentationControllerDelegate {
 extension AppDelegate: BetaTestDelegate {
   
   func didCompleteAllTests(with results: [BetaTestViewController.ProcessResult]) {
-    // DEBUG: Print raw results from TradeInFramework
-    print("=== TradeInFramework Results ===")
-    print("Total tests completed: \(results.count)")
+    print("=== didCompleteAllTests called ===")
+    print("Processing \(results.count) test results...")
     
     let resultsArray = results.map { result -> [String: Any] in
       let stateString = result.state == .success ? "success" : "failed"
-      print("Test #\(result.index): \(result.title) -> \(stateString)")
+      print("  Test #\(result.index): \(result.title) -> \(stateString)")
       return [
         "index": result.index,
         "title": result.title,
@@ -129,36 +128,52 @@ extension AppDelegate: BetaTestDelegate {
       "completed": true
     ]
     
-    // DEBUG: Print final response to Flutter
-    print("=== Sending to Flutter ===")
-    print("Response: \(response)")
-    print("=========================")
-    
+    // Cache results - they will be sent to Flutter after user taps "Lanjut" and UI dismisses
     cachedResults = response
-    pendingResult?(response)
-    pendingResult = nil
+    print("Results cached. Waiting for user to tap 'Lanjut'...")
+    print("====================================")
+    
+    // NOTE: Results are NOT sent here. They are sent in willFinishBetaTestFromFlutter
+    // after the native UI is dismissed, to ensure proper flow.
   }
   
   func willFinishBetaTestFromFlutter() {
     // DEBUG: Called when user taps "Lanjut" (Continue) button in native UI
-    print("=== User Tapped 'Lanjut' Button ===")
-    print("Dismissing native TradeIn UI...")
+    print("=== willFinishBetaTestFromFlutter called ===")
     
-    // Show cached results that will be sent to Flutter
-    if let cached = cachedResults {
-      print("Cached results available:")
-      print("  - Completed: \(cached["completed"] ?? false)")
-      print("  - Results count: \((cached["results"] as? [[String: Any]])?.count ?? 0)")
-      if let results = cached["results"] as? [[String: Any]] {
-        for result in results {
-          print("    • \(result["title"] ?? "Unknown"): \(result["state"] ?? "unknown")")
+    // Dismiss the view controller and send results after animation completes
+    window?.rootViewController?.dismiss(animated: true) { [weak self] in
+      guard let self = self else { return }
+      
+      print("=== Native UI dismissed, sending results to Flutter ===")
+      
+      // Send cached results to Flutter after dismissal completes
+      if let cached = self.cachedResults {
+        print("Sending cached results to Flutter:")
+        print("  - Completed: \(cached["completed"] ?? false)")
+        print("  - Results count: \((cached["results"] as? [[String: Any]])?.count ?? 0)")
+        
+        // Only send if we haven't already sent results
+        if self.pendingResult != nil {
+          self.pendingResult?(cached)
+          self.pendingResult = nil
+          print("Results successfully sent to Flutter")
+        } else {
+          print("Pending result already cleared, results were sent earlier")
+        }
+      } else {
+        print("WARNING: No cached results available to send!")
+        if self.pendingResult != nil {
+          self.pendingResult?(FlutterError(
+            code: "NO_RESULTS",
+            message: "No diagnostic results available",
+            details: nil
+          ))
+          self.pendingResult = nil
         }
       }
-    } else {
-      print("WARNING: No cached results available!")
+      
+      print("====================================")
     }
-    print("====================================")
-    
-    window?.rootViewController?.dismiss(animated: true)
   }
 }
