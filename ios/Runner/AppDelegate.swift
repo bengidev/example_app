@@ -110,6 +110,12 @@ extension AppDelegate: UIAdaptivePresentationControllerDelegate {
 extension AppDelegate: BetaTestDelegate {
   
   func didCompleteAllTests(with results: [BetaTestViewController.ProcessResult]) {
+    // GUARD: Prevent processing results multiple times (infinite loop protection)
+    if cachedResults != nil {
+      print("=== didCompleteAllTests called (ALREADY PROCESSED - SKIPPING) ===")
+      return
+    }
+    
     print("=== didCompleteAllTests called ===")
     print("Processing \(results.count) test results...")
     
