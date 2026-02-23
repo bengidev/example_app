@@ -15,9 +15,25 @@ import TradeInFramework
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
     
+    // Wrap FlutterViewController in UINavigationController for navigation stack
+    setupNavigationController()
+    
     setupMethodChannel()
     
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+  
+  private func setupNavigationController() {
+    guard let flutterViewController = window?.rootViewController as? FlutterViewController else {
+      return
+    }
+    
+    // Create UINavigationController with Flutter as root
+    let navigationController = UINavigationController(rootViewController: flutterViewController)
+    navigationController.setNavigationBarHidden(true, animated: false)
+    
+    // Replace window's rootViewController with navigation controller
+    window?.rootViewController = navigationController
   }
   
   private func setupMethodChannel() {
@@ -56,10 +72,10 @@ import TradeInFramework
       return
     }
     
-    guard let rootViewController = window?.rootViewController else {
+    guard let navigationController = window?.rootViewController as? UINavigationController else {
       result(FlutterError(
-        code: "NO_VIEW_CONTROLLER",
-        message: "Root view controller not available",
+        code: "NO_NAVIGATION_CONTROLLER",
+        message: "Navigation controller not available",
         details: nil
       ))
       return
@@ -70,11 +86,9 @@ import TradeInFramework
     let betaTest = TradeIn.createBetaTestAnalyzer(isFlutterCaller: true)
     betaTest.delegate = self
     
-    // Wrap in NavigationController for proper navigation stack behavior
-    let navController = UINavigationController(rootViewController: betaTest)
-    navController.modalPresentationStyle = .fullScreen
-    
-    rootViewController.present(navController, animated: true)
+    // Push BetaTest onto the navigation stack (Flutter is the root)
+    betaTest.title = "Device Diagnostics"
+    navigationController.pushViewController(betaTest, animated: true)
   }
   
   private func handleGetDeviceInfo(result: @escaping FlutterResult) {
