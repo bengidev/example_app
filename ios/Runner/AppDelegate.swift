@@ -98,6 +98,9 @@ import TradeInFramework
     // Push BetaTest onto the navigation stack (Flutter is the root)
     betaTest.title = "Device Diagnostics"
     navigationController.pushViewController(betaTest, animated: true)
+    
+    // Hide back button to force user to complete the process
+    betaTest.navigationItem.hidesBackButton = true
   }
   
   private func handleGetDeviceInfo(result: @escaping FlutterResult) {
