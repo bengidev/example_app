@@ -37,13 +37,22 @@ import TradeInFramework
   }
   
   private func setupMethodChannel() {
-    guard let controller = window?.rootViewController as? FlutterViewController else {
+    // Get FlutterViewController from navigation controller or directly
+    let controller: FlutterViewController?
+    if let navController = window?.rootViewController as? UINavigationController {
+      controller = navController.viewControllers.first as? FlutterViewController
+    } else {
+      controller = window?.rootViewController as? FlutterViewController
+    }
+    
+    guard let flutterController = controller else {
+      print("ERROR: Could not find FlutterViewController")
       return
     }
     
     methodChannel = FlutterMethodChannel(
       name: "com.example.tradein/channel",
-      binaryMessenger: controller.binaryMessenger
+      binaryMessenger: flutterController.binaryMessenger
     )
     
     methodChannel?.setMethodCallHandler { [weak self] (call, result) in
