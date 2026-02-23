@@ -336,6 +336,14 @@ class _TradeInHomePageState extends State<TradeInHomePage>
 
   Widget _buildLoadingState() {
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: const Color(0xFF0D7377).withOpacity(0.15),
+          width: 1.5,
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(40),
         child: Column(
@@ -584,6 +592,14 @@ class _TradeInHomePageState extends State<TradeInHomePage>
     IconData icon,
   ) {
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: const Color(0xFF0D7377).withOpacity(0.15),
+          width: 1.5,
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
