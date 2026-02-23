@@ -70,10 +70,11 @@ import TradeInFramework
     let betaTest = TradeIn.createBetaTestAnalyzer(isFlutterCaller: true)
     betaTest.delegate = self
     
-    // Set to fullscreen to prevent drag-to-dismiss gesture (iOS 13+)
-    betaTest.modalPresentationStyle = .fullScreen
+    // Wrap in NavigationController for proper navigation stack behavior
+    let navController = UINavigationController(rootViewController: betaTest)
+    navController.modalPresentationStyle = .fullScreen
     
-    rootViewController.present(betaTest, animated: true)
+    rootViewController.present(navController, animated: true)
   }
   
   private func handleGetDeviceInfo(result: @escaping FlutterResult) {
@@ -110,11 +111,11 @@ extension AppDelegate: UIAdaptivePresentationControllerDelegate {
 extension AppDelegate: BetaTestDelegate {
   
   func didCompleteAllTests(with results: [BetaTestViewController.ProcessResult]) {
-    // GUARD: Prevent processing results multiple times (infinite loop protection)
-    if cachedResults != nil {
-      print("=== didCompleteAllTests called (ALREADY PROCESSED - SKIPPING) ===")
-      return
-    }
+    // // GUARD: Prevent processing results multiple times (infinite loop protection)
+    // if cachedResults != nil {
+    //   print("=== didCompleteAllTests called (ALREADY PROCESSED - SKIPPING) ===")
+    //   return
+    // }
     
     print("=== didCompleteAllTests called ===")
     print("Processing \(results.count) test results...")
