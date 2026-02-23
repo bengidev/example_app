@@ -183,6 +183,9 @@ extension AppDelegate: BetaTestDelegate {
     // Pop BetaTest view controller to return to Flutter
     navigationController.popViewController(animated: true)
     
+    // Hide navigation bar when returning to Flutter (fixes green header bug)
+    navigationController.setNavigationBarHidden(true, animated: true)
+    
     // Send results after a short delay to allow animation to complete
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
       guard let self = self else { return }
