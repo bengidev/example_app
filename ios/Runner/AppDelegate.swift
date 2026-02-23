@@ -8,6 +8,8 @@ import TradeInFramework
   private var methodChannel: FlutterMethodChannel?
   private var pendingResult: FlutterResult?
   private var cachedResults: [String: Any]?
+  private var navigationController: UINavigationController?
+  private var betaTestViewController: UIViewController?
   
   override func application(
     _ application: UIApplication,
@@ -99,8 +101,15 @@ import TradeInFramework
     betaTest.title = "Device Diagnostics"
     navigationController.pushViewController(betaTest, animated: true)
     
-    // Hide back button to force user to complete the process
-    betaTest.navigationItem.hidesBackButton = true
+    // Show back button initially - user can go back before starting tests
+    betaTest.navigationItem.hidesBackButton = false
+    
+    // Store reference to navigation controller for later use
+    self.navigationController = navigationController
+    self.betaTestViewController = betaTest
+    
+    // Set navigation controller delegate to detect back button taps
+    navigationController.delegate = self
   }
   
   private func handleGetDeviceInfo(result: @escaping FlutterResult) {
@@ -112,6 +121,36 @@ import TradeInFramework
         message: "No cached device info available. Run startTradeIn first.",
         details: nil
       ))
+    }
+  }
+}
+
+// MARK: - UINavigationControllerDelegate
+extension AppDelegate: UINavigationControllerDelegate {
+  
+  func navigationController(_ navigationController: UINavigationController, didShow viewController: UIViewController, animated: Bool) {
+    // Check if we're back to Flutter (root view controller)
+    if viewController is FlutterViewController && pendingResult != nil {
+      print("=== User navigated back to Flutter via back button ===")
+      
+      // Hide navigation bar when returning to Flutter
+      navigationController.setNavigationBarHidden(true, animated: true)
+      
+      // Notify Flutter that user cancelled by going back
+      let response: [String: Any] = [
+        "results": [],
+        "completed": false,
+        "cancelled": true,
+        "backButton": true
+      ]
+      pendingResult?(response)
+      pendingResult = nil
+      
+      // Clear stored references
+      self.navigationController = nil
+      self.betaTestViewController = nil
+      
+      print("====================================")
     }
   }
 }

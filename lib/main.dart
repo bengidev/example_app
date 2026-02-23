@@ -97,13 +97,19 @@ class _TradeInHomePageState extends State<TradeInHomePage>
       if (mounted) {
         // Check if user cancelled the operation
         final bool wasCancelled = result['cancelled'] == true;
+        final bool viaBackButton = result['backButton'] == true;
 
         if (wasCancelled) {
           setState(() {
             _isLoading = false;
             _results = null;
           });
-          _showInfoSnackBar('Trade-in was cancelled');
+          
+          if (viaBackButton) {
+            _showInfoSnackBar('Returned from diagnostics. You can restart anytime.');
+          } else {
+            _showInfoSnackBar('Trade-in was cancelled');
+          }
         } else {
           setState(() {
             _results = result;
