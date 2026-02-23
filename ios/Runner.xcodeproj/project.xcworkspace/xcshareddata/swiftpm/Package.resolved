@@ -1,0 +1,15 @@
+{
+  "originHash" : "b434a2ff9ffe1645114ee96969435c1355ce31b18297a2f0ce5b02b85fe1ef4e",
+  "pins" : [
+    {
+      "identity" : "tradeinframework",
+      "kind" : "remoteSourceControl",
+      "location" : "https://gitlab.com/bengidev/TradeInFramework.git",
+      "state" : {
+        "revision" : "f4c6dae75ba584a7e8c1300e240efff749a3b89a",
+        "version" : "1.0.85"
+      }
+    }
+  ],
+  "version" : 3
+}

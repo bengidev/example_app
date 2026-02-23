@@ -14,6 +14,7 @@
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
+		ECAA943E2F4BF34300B0BD72 /* TradeInFramework in Frameworks */ = {isa = PBXBuildFile; productRef = ECAA943D2F4BF34300B0BD72 /* TradeInFramework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -62,6 +63,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ECAA943E2F4BF34300B0BD72 /* TradeInFramework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -190,6 +192,9 @@
 				Base,
 			);
 			mainGroup = 97C146E51CF9000F007C117D;
+			packageReferences = (
+				ECAA943C2F4BF34300B0BD72 /* XCRemoteSwiftPackageReference "TradeInFramework" */,
+			);
 			productRefGroup = 97C146EF1CF9000F007C117D /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -614,6 +619,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		ECAA943C2F4BF34300B0BD72 /* XCRemoteSwiftPackageReference "TradeInFramework" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://gitlab.com/bengidev/TradeInFramework.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.85;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		ECAA943D2F4BF34300B0BD72 /* TradeInFramework */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = ECAA943C2F4BF34300B0BD72 /* XCRemoteSwiftPackageReference "TradeInFramework" */;
+			productName = TradeInFramework;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 97C146E61CF9000F007C117D /* Project object */;
 }
