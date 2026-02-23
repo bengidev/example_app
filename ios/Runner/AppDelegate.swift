@@ -7,9 +7,10 @@ import TradeInFramework
   
   private var methodChannel: FlutterMethodChannel?
   private var pendingResult: FlutterResult?
-  private var cachedResults: [String: Any]?
+  private var latestProcessResults: [[String: Any]]?
   private var navigationController: UINavigationController?
   private var betaTestViewController: UIViewController?
+  private var isFinishingFromLanjut = false
   
   override func application(
     _ application: UIApplication,
@@ -91,6 +92,8 @@ import TradeInFramework
       ))
       return
     }
+
+    latestProcessResults = nil
     
     pendingResult = result
     
@@ -113,8 +116,8 @@ import TradeInFramework
   }
   
   private func handleGetDeviceInfo(result: @escaping FlutterResult) {
-    if let cached = cachedResults {
-      result(cached)
+    if let response = buildResponseFromLatestResults() {
+      result(response)
     } else {
       result(FlutterError(
         code: "NO_DATA",
@@ -122,6 +125,66 @@ import TradeInFramework
         details: nil
       ))
     }
+  }
+
+  private func buildResponseFromLatestResults() -> [String: Any]? {
+    guard let results = latestProcessResults else {
+      return nil
+    }
+
+    return [
+      "results": results,
+      "completed": true
+    ]
+  }
+
+  private func updateLatestProcessResult(
+    at index: Int,
+    title: String,
+    state: BetaTestCardState
+  ) {
+    var currentResults = latestProcessResults ?? []
+
+    let updated: [String: Any] = [
+      "index": index,
+      "title": title,
+      "state": state == .success ? "success" : "failed"
+    ]
+
+    if let existingIndex = currentResults.firstIndex(where: { ($0["index"] as? Int) == index }) {
+      currentResults[existingIndex] = updated
+    } else {
+      currentResults.append(updated)
+      currentResults.sort { (lhs, rhs) in
+        let left = lhs["index"] as? Int ?? Int.max
+        let right = rhs["index"] as? Int ?? Int.max
+        return left < right
+      }
+    }
+
+    latestProcessResults = currentResults
+  }
+
+  private func mergeCompletedResultsIfNeeded(_ results: [[String: Any]]) {
+    var currentResults = latestProcessResults ?? []
+
+    for result in results {
+      guard let index = result["index"] as? Int else {
+        continue
+      }
+
+      if currentResults.firstIndex(where: { ($0["index"] as? Int) == index }) == nil {
+        currentResults.append(result)
+      }
+    }
+
+    currentResults.sort { (lhs, rhs) in
+      let left = lhs["index"] as? Int ?? Int.max
+      let right = rhs["index"] as? Int ?? Int.max
+      return left < right
+    }
+
+    latestProcessResults = currentResults
   }
 }
 
@@ -131,6 +194,10 @@ extension AppDelegate: UINavigationControllerDelegate {
   func navigationController(_ navigationController: UINavigationController, didShow viewController: UIViewController, animated: Bool) {
     // Check if we're back to Flutter (root view controller)
     if viewController is FlutterViewController && pendingResult != nil {
+      if isFinishingFromLanjut {
+        return
+      }
+
       print("=== User navigated back to Flutter via back button ===")
       
       // Hide navigation bar when returning to Flutter
@@ -145,6 +212,7 @@ extension AppDelegate: UINavigationControllerDelegate {
       ]
       pendingResult?(response)
       pendingResult = nil
+      latestProcessResults = nil
       
       // Clear stored references
       self.navigationController = nil
@@ -168,45 +236,54 @@ extension AppDelegate: UIAdaptivePresentationControllerDelegate {
       ]
       pendingResult?(response)
       pendingResult = nil
+      latestProcessResults = nil
     }
   }
 }
 
 // MARK: - BetaTestDelegate
 extension AppDelegate: BetaTestDelegate {
+
+  func didCompleteTest(at index: Int, title: String, with state: BetaTestCardState) {
+    updateLatestProcessResult(at: index, title: title, state: state)
+  }
   
   func didCompleteAllTests(with results: [BetaTestViewController.ProcessResult]) {
-    // // GUARD: Prevent processing results multiple times (infinite loop protection)
-    // if cachedResults != nil {
-    //   print("=== didCompleteAllTests called (ALREADY PROCESSED - SKIPPING) ===")
-    //   return
-    // }
-    
     print("=== didCompleteAllTests called ===")
     print("Processing \(results.count) test results...")
     
-    let resultsArray = results.map { result -> [String: Any] in
+    for result in results {
       let stateString = result.state == .success ? "success" : "failed"
       print("  Test #\(result.index): \(result.title) -> \(stateString)")
-      return [
+    }
+
+    let completedResults = results.map { result in
+      [
         "index": result.index,
         "title": result.title,
-        "state": stateString
+        "state": result.state == .success ? "success" : "failed"
       ]
     }
-    
-    let response: [String: Any] = [
-      "results": resultsArray,
-      "completed": true
-    ]
-    
-    // Cache results - they will be sent to Flutter after user taps "Lanjut" and UI dismisses
-    cachedResults = response
-    print("Results cached. Waiting for user to tap 'Lanjut'...")
+    mergeCompletedResultsIfNeeded(completedResults)
+    print("Latest process results captured. Waiting for user to tap 'Lanjut'...")
     print("====================================")
     
     // NOTE: Results are NOT sent here. They are sent in willFinishBetaTestFromFlutter
     // after the native UI is dismissed, to ensure proper flow.
+  }
+
+  func didRetryTest(at index: Int, title: String, with state: BetaTestCardState) {
+    print("=== didRetryTest called ===")
+    let stateString = state == .success ? "success" : "failed"
+    print("  Retry result #\(index): \(title) -> \(stateString)")
+
+    updateLatestProcessResult(at: index, title: title, state: state)
+
+    if let latest = buildResponseFromLatestResults() {
+      print("Updated latest results after retry:")
+      print("  - Results count: \((latest["results"] as? [[String: Any]])?.count ?? 0)")
+    }
+    print("====================================")
   }
   
   
@@ -231,28 +308,26 @@ extension AppDelegate: BetaTestDelegate {
       return
     }
     
-    // Pop BetaTest view controller to return to Flutter
+    isFinishingFromLanjut = true
+
     navigationController.popViewController(animated: true)
-    
-    // Hide navigation bar when returning to Flutter (fixes green header bug)
     navigationController.setNavigationBarHidden(true, animated: true)
-    
-    // Send results after a short delay to allow animation to complete
+
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
       guard let self = self else { return }
       
       print("=== BetaTest popped from navigation stack, sending results to Flutter ===")
-      
-      // Send cached results to Flutter after dismissal completes
-      if let cached = self.cachedResults {
-        print("Sending cached results to Flutter:")
-        print("  - Completed: \(cached["completed"] ?? false)")
-        print("  - Results count: \((cached["results"] as? [[String: Any]])?.count ?? 0)")
+
+      if let response = self.buildResponseFromLatestResults() {
+        print("Sending latest results to Flutter:")
+        print("  - Completed: \(response["completed"] ?? false)")
+        print("  - Results count: \((response["results"] as? [[String: Any]])?.count ?? 0)")
         
         // Only send if we haven't already sent results
         if self.pendingResult != nil {
-          self.pendingResult?(cached)
+          self.pendingResult?(response)
           self.pendingResult = nil
+          self.latestProcessResults = nil
           print("Results successfully sent to Flutter")
         } else {
           print("Pending result already cleared, results were sent earlier")
@@ -268,6 +343,8 @@ extension AppDelegate: BetaTestDelegate {
           self.pendingResult = nil
         }
       }
+
+      self.isFinishingFromLanjut = false
       
       print("====================================")
     }
