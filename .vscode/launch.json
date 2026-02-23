@@ -5,45 +5,21 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "example_app (iPhone Beng - Release)",
-      "request": "launch",
-      "type": "dart",
-      "program": "lib/main.dart",
-      "deviceId": "00008030-0001501E2122202E",
-      "flutterMode": "release"
-    },
-    {
-      "name": "example_app (iPhone Beng - Debug)",
-      "request": "launch",
-      "type": "dart",
-      "program": "lib/main.dart",
-      "deviceId": "00008030-0001501E2122202E",
-      "console": "debugConsole"
-    },
-    {
-      "name": "example_app (iPhone Beng - Profile)",
-      "request": "launch",
-      "type": "dart",
-      "program": "lib/main.dart",
-      "deviceId": "00008030-0001501E2122202E",
-      "flutterMode": "profile"
-    },
-    {
-      "name": "example_app (Android - Debug)",
+      "name": "example_app (Debug - Any Device)",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
       "console": "debugConsole"
     },
     {
-      "name": "example_app (Android - Profile)",
+      "name": "example_app (Profile - Any Device)",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
       "flutterMode": "profile"
     },
     {
-      "name": "example_app (Android - Release)",
+      "name": "example_app (Release - Any Device)",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
