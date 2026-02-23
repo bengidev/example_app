@@ -140,6 +140,25 @@ extension AppDelegate: BetaTestDelegate {
   }
   
   func willFinishBetaTestFromFlutter() {
+    // DEBUG: Called when user taps "Lanjut" (Continue) button in native UI
+    print("=== User Tapped 'Lanjut' Button ===")
+    print("Dismissing native TradeIn UI...")
+    
+    // Show cached results that will be sent to Flutter
+    if let cached = cachedResults {
+      print("Cached results available:")
+      print("  - Completed: \(cached['completed'] ?? false)")
+      print("  - Results count: \((cached['results'] as? [[String: Any]])?.count ?? 0)")
+      if let results = cached['results'] as? [[String: Any]] {
+        for result in results {
+          print("    • \(result['title'] ?? 'Unknown'): \(result['state'] ?? 'unknown')")
+        }
+      }
+    } else {
+      print("WARNING: No cached results available!")
+    }
+    print("====================================")
+    
     window?.rootViewController?.dismiss(animated: true)
   }
 }
