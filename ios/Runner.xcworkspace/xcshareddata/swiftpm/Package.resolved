@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://gitlab.com/bengidev/TradeInFramework.git",
       "state" : {
-        "revision" : "f71e8e4e7f18b2f8a7a1267da2bc06ce5851cd0b",
-        "version" : "1.0.88"
+        "revision" : "618d72e53efbfc1b7ea92291fcf3426c4972edf0",
+        "version" : "1.0.89"
       }
     }
   ],

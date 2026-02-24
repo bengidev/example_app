@@ -220,6 +220,18 @@ import TradeInFramework
 
     latestProcessResults = sortedResults(currentResults)
   }
+
+  private func setBackButtonHidden(_ hidden: Bool, animated: Bool = true) {
+    guard let betaTestViewController else { return }
+
+    guard animated, let navigationBar = betaTestViewController.navigationController?.navigationBar else {
+      betaTestViewController.navigationItem.setHidesBackButton(hidden, animated: animated)
+      return
+    }
+
+    betaTestViewController.navigationItem.setHidesBackButton(hidden, animated: animated)
+    navigationBar.layoutIfNeeded()
+  }
 }
 
 extension AppDelegate: UINavigationControllerDelegate {
@@ -262,6 +274,7 @@ extension AppDelegate: BetaTestDelegate {
       buildResultEntry(index: result.index, title: result.title, state: result.state)
     }
     mergeCompletedResultsIfNeeded(completedResults)
+    setBackButtonHidden(false)
   }
 
   func didRetryTest(at index: Int, title: String, with state: BetaTestCardState) {
@@ -269,7 +282,7 @@ extension AppDelegate: BetaTestDelegate {
   }
 
   func willStartAllTests() {
-    betaTestViewController?.navigationItem.hidesBackButton = true
+    setBackButtonHidden(true)
   }
 
   func willFinishBetaTestFromFlutter() {
