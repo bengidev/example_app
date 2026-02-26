@@ -91,7 +91,7 @@ import TradeInFramework
     latestProcessResults = nil
     pendingResult = result
 
-    let betaTest = TradeIn.createBetaTestAnalyzer(isFlutterCaller: true)
+    let betaTest = TradeIn.createDeviceTestAnalyzer(isFlutterCaller: true, testEngineType: .beta)
     betaTest.delegate = self
     betaTest.title = "Device Diagnostics"
     betaTest.navigationItem.hidesBackButton = false
@@ -114,11 +114,11 @@ import TradeInFramework
     ))
   }
 
-  private func mapState(_ state: BetaTestCardState) -> String {
+  private func mapState(_ state: DeviceTestCardState) -> String {
     state == .success ? "success" : "failed"
   }
 
-  private func buildResultEntry(index: Int, title: String, state: BetaTestCardState) -> [String: Any] {
+  private func buildResultEntry(index: Int, title: String, state: DeviceTestCardState) -> [String: Any] {
     [
       "index": index,
       "title": title,
@@ -191,7 +191,7 @@ import TradeInFramework
     clearFlowState(clearPendingResult: true)
   }
 
-  private func updateLatestProcessResult(at index: Int, title: String, state: BetaTestCardState) {
+  private func updateLatestProcessResult(at index: Int, title: String, state: DeviceTestCardState) {
     var currentResults = latestProcessResults ?? []
     let updated = buildResultEntry(index: index, title: title, state: state)
 
@@ -238,7 +238,7 @@ extension AppDelegate: UINavigationControllerDelegate {
 
   func navigationController(
     _ navigationController: UINavigationController,
-    didShow viewController: UIViewController,
+    willShow viewController: UIViewController,
     animated: Bool
   ) {
     guard viewController is FlutterViewController, pendingResult != nil else {
@@ -249,8 +249,20 @@ extension AppDelegate: UINavigationControllerDelegate {
       return
     }
 
-    navigationController.setNavigationBarHidden(true, animated: true)
+    navigationController.setNavigationBarHidden(true, animated: false)
     sendCancelledResponse(backButton: true)
+  }
+
+  func navigationController(
+    _ navigationController: UINavigationController,
+    didShow viewController: UIViewController,
+    animated: Bool
+  ) {
+    guard viewController is FlutterViewController else {
+      return
+    }
+
+    navigationController.setNavigationBarHidden(true, animated: false)
   }
 }
 
@@ -263,13 +275,21 @@ extension AppDelegate: UIAdaptivePresentationControllerDelegate {
   }
 }
 
-extension AppDelegate: BetaTestDelegate {
+extension AppDelegate: DeviceTestDelegate {
 
-  func didCompleteTest(at index: Int, title: String, with state: BetaTestCardState) {
+  func didCompleteTest(
+    testEngineType _: TestEngineType,
+    at index: Int,
+    title: String,
+    with state: DeviceTestCardState
+  ) {
     updateLatestProcessResult(at: index, title: title, state: state)
   }
 
-  func didCompleteAllTests(with results: [BetaTestViewController.ProcessResult]) {
+  func didCompleteAllTests(
+    testEngineType _: TestEngineType,
+    with results: [DeviceTestProcessResult]
+  ) {
     let completedResults = results.map { result in
       buildResultEntry(index: result.index, title: result.title, state: result.state)
     }
@@ -277,15 +297,20 @@ extension AppDelegate: BetaTestDelegate {
     setBackButtonHidden(false)
   }
 
-  func didRetryTest(at index: Int, title: String, with state: BetaTestCardState) {
+  func didRetryTest(
+    testEngineType _: TestEngineType,
+    at index: Int,
+    title: String,
+    with state: DeviceTestCardState
+  ) {
     updateLatestProcessResult(at: index, title: title, state: state)
   }
 
-  func willStartAllTests() {
+  func willStartAllTests(testEngineType _: TestEngineType) {
     setBackButtonHidden(true)
   }
 
-  func willFinishBetaTestFromFlutter() {
+  func willFinishDeviceTestFromFlutter(testEngineType _: TestEngineType) {
     guard let navigationController = window?.rootViewController as? UINavigationController else {
       return
     }

@@ -626,7 +626,7 @@
 			repositoryURL = "https://gitlab.com/bengidev/TradeInFramework.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 1.0.85;
+				minimumVersion = 1.0.141;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
