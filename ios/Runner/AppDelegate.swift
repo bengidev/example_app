@@ -14,6 +14,7 @@ import TradeInFramework
   private var methodChannel: FlutterMethodChannel?
   private var pendingResult: FlutterResult?
   private var latestProcessResults: [[String: Any]]?
+  private var latestDescriptionsByIndex: [Int: [String: String]] = [:]
   private var betaTestViewController: UIViewController?
   private var isFinishingFromFinishTest = false
 
@@ -89,9 +90,21 @@ import TradeInFramework
     }
 
     latestProcessResults = nil
+    latestDescriptionsByIndex = [:]
     pendingResult = result
 
     let betaTest = TradeIn.createDeviceTestAnalyzer(isFlutterCaller: true, testEngineType: .beta)
+    betaTest.onDidCompleteTest = { [weak self] result in
+      self?.latestDescriptionsByIndex[result.index] = result.descriptions
+    }
+    betaTest.onDidRetryTest = { [weak self] result in
+      self?.latestDescriptionsByIndex[result.index] = result.descriptions
+    }
+    betaTest.onDidCompleteAllTests = { [weak self] results in
+      for result in results {
+        self?.latestDescriptionsByIndex[result.index] = result.descriptions
+      }
+    }
     betaTest.delegate = self
     betaTest.title = "Device Diagnostics"
     betaTest.navigationItem.hidesBackButton = false
@@ -118,12 +131,23 @@ import TradeInFramework
     state == .success ? "success" : "failed"
   }
 
-  private func buildResultEntry(index: Int, title: String, state: DeviceTestCardState) -> [String: Any] {
-    [
+  private func buildResultEntry(
+    index: Int,
+    title: String,
+    state: DeviceTestCardState,
+    descriptions: [String: String]? = nil
+  ) -> [String: Any] {
+    var entry: [String: Any] = [
       "index": index,
       "title": title,
       "state": mapState(state)
     ]
+
+    if let descriptions {
+      entry["descriptions"] = descriptions
+    }
+
+    return entry
   }
 
   private func sortedResults(_ results: [[String: Any]]) -> [[String: Any]] {
@@ -150,6 +174,7 @@ import TradeInFramework
       pendingResult = nil
     }
     latestProcessResults = nil
+    latestDescriptionsByIndex = [:]
     betaTestViewController = nil
   }
 
@@ -191,9 +216,14 @@ import TradeInFramework
     clearFlowState(clearPendingResult: true)
   }
 
-  private func updateLatestProcessResult(at index: Int, title: String, state: DeviceTestCardState) {
+  private func updateLatestProcessResult(
+    at index: Int,
+    title: String,
+    state: DeviceTestCardState,
+    descriptions: [String: String]? = nil
+  ) {
     var currentResults = latestProcessResults ?? []
-    let updated = buildResultEntry(index: index, title: title, state: state)
+    let updated = buildResultEntry(index: index, title: title, state: state, descriptions: descriptions)
 
     if let existingIndex = currentResults.firstIndex(where: { ($0["index"] as? Int) == index }) {
       currentResults[existingIndex] = updated
@@ -283,7 +313,9 @@ extension AppDelegate: DeviceTestDelegate {
     title: String,
     with state: DeviceTestCardState
   ) {
-    updateLatestProcessResult(at: index, title: title, state: state)
+    let descriptions = latestDescriptionsByIndex[index] ?? [:]
+    print("didCompleteTest descriptions [\(index)] \(title): \(descriptions)")
+    updateLatestProcessResult(at: index, title: title, state: state, descriptions: descriptions)
   }
 
   func didCompleteAllTests(
@@ -291,7 +323,12 @@ extension AppDelegate: DeviceTestDelegate {
     with results: [DeviceTestProcessResult]
   ) {
     let completedResults = results.map { result in
-      buildResultEntry(index: result.index, title: result.title, state: result.state)
+      buildResultEntry(
+        index: result.index,
+        title: result.title,
+        state: result.state,
+        descriptions: result.descriptions
+      )
     }
     mergeCompletedResultsIfNeeded(completedResults)
     setBackButtonHidden(false)
@@ -303,7 +340,8 @@ extension AppDelegate: DeviceTestDelegate {
     title: String,
     with state: DeviceTestCardState
   ) {
-    updateLatestProcessResult(at: index, title: title, state: state)
+    let descriptions = latestDescriptionsByIndex[index] ?? [:]
+    updateLatestProcessResult(at: index, title: title, state: state, descriptions: descriptions)
   }
 
   func willStartAllTests(testEngineType _: TestEngineType) {

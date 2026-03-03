@@ -89,7 +89,9 @@ class _TradeInHomePageState extends State<TradeInHomePage>
       debugPrint('Results count: ${(result['results'] as List?)?.length ?? 0}');
       if (result['results'] != null) {
         for (var item in result['results']) {
-          debugPrint('  - ${item['title']}: ${item['state']}');
+          debugPrint(
+            '  - ${item['title']}: ${item['state']} | descriptions: ${item['descriptions'] ?? {}}',
+          );
         }
       }
       debugPrint('================================');
@@ -104,9 +106,10 @@ class _TradeInHomePageState extends State<TradeInHomePage>
             _isLoading = false;
             _results = null;
           });
-          
+
           if (viaBackButton) {
-            _showInfoSnackBar('Returned from diagnostics. You can restart anytime.');
+            _showInfoSnackBar(
+                'Returned from diagnostics. You can restart anytime.');
           } else {
             _showInfoSnackBar('Trade-in was cancelled');
           }
@@ -172,6 +175,100 @@ class _TradeInHomePageState extends State<TradeInHomePage>
         margin: const EdgeInsets.all(16),
         duration: const Duration(seconds: 3),
       ),
+    );
+  }
+
+  Map<String, String> _extractDescriptions(Map<String, dynamic> result) {
+    final rawDescriptions = result['descriptions'];
+    if (rawDescriptions is! Map) {
+      return const {};
+    }
+
+    final descriptions = <String, String>{};
+    rawDescriptions.forEach((key, value) {
+      final normalizedKey = key.toString().trim();
+      final normalizedValue = value.toString().trim();
+      if (normalizedKey.isEmpty || normalizedValue.isEmpty) {
+        return;
+      }
+      descriptions[normalizedKey] = normalizedValue;
+    });
+    return descriptions;
+  }
+
+  String _formatDescriptionKey(String rawKey) {
+    final cleaned = rawKey.replaceAll(RegExp(r'[_-]+'), ' ').trim();
+    if (cleaned.isEmpty) {
+      return rawKey;
+    }
+
+    return cleaned
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .map((word) => '${word[0].toUpperCase()}${word.substring(1)}')
+        .join(' ');
+  }
+
+  Widget _buildResultSubtitle({
+    required bool isSuccess,
+    required Map<String, String> descriptions,
+  }) {
+    final statusColor = isSuccess ? Colors.green.shade600 : Colors.red.shade600;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          isSuccess ? 'Test passed' : 'Test failed',
+          style: TextStyle(
+            color: statusColor,
+            fontSize: 13,
+          ),
+        ),
+        if (descriptions.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          ...descriptions.entries.map((entry) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    margin: const EdgeInsets.only(top: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade500,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: RichText(
+                      text: TextSpan(
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Colors.grey.shade700,
+                              height: 1.35,
+                            ),
+                        children: [
+                          TextSpan(
+                            text: '${_formatDescriptionKey(entry.key)}: ',
+                            style: TextStyle(
+                              color: Colors.grey.shade800,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          TextSpan(text: entry.value),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ],
     );
   }
 
@@ -519,6 +616,7 @@ class _TradeInHomePageState extends State<TradeInHomePage>
                   final title = result['title'] as String? ?? 'Unknown Test';
                   final state = result['state'] as String? ?? 'unknown';
                   final isSuccess = state == 'success';
+                  final descriptions = _extractDescriptions(result);
 
                   return Column(
                     children: [
@@ -550,14 +648,9 @@ class _TradeInHomePageState extends State<TradeInHomePage>
                             fontSize: 15,
                           ),
                         ),
-                        subtitle: Text(
-                          isSuccess ? 'Test passed' : 'Test failed',
-                          style: TextStyle(
-                            color: isSuccess
-                                ? Colors.green.shade600
-                                : Colors.red.shade600,
-                            fontSize: 13,
-                          ),
+                        subtitle: _buildResultSubtitle(
+                          isSuccess: isSuccess,
+                          descriptions: descriptions,
                         ),
                         trailing: Container(
                           padding: const EdgeInsets.symmetric(

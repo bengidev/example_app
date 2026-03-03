@@ -23,6 +23,7 @@ class TradeInChannel {
   ///       'index': int,
   ///       'title': String,
   ///       'state': String, // 'success' or 'failed'
+  ///       'descriptions': Map<String, String>, // optional detail fields per test
   ///     },
   ///     ...
   ///   ],
@@ -104,10 +105,10 @@ class TradeInChannel {
     }
   }
 
-  /// Converts a Map<dynamic, dynamic> to Map<String, dynamic>.
+  /// Converts a `Map<dynamic, dynamic>` to `Map<String, dynamic>`.
   ///
-  /// This is necessary because MethodChannel returns Map<dynamic, dynamic>
-  /// but we want type-safe Map<String, dynamic> for the public API.
+  /// This is necessary because MethodChannel returns `Map<dynamic, dynamic>`
+  /// but we want type-safe `Map<String, dynamic>` for the public API.
   Map<String, dynamic> _convertToStringDynamicMap(
     Map<dynamic, dynamic> original,
   ) {
