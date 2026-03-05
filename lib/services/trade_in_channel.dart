@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 /// Service class for communicating with native TradeInFramework via MethodChannel.
 ///
 /// Provides type-safe wrappers for native TradeInFramework operations including
-/// launching the trade-in UI and retrieving device diagnostic information.
+/// launching the trade-in diagnostics UI.
 class TradeInChannel {
   static const MethodChannel _channel = MethodChannel(
     'com.example.tradein/channel',
@@ -56,51 +56,6 @@ class TradeInChannel {
       throw PlatformException(
         code: 'UNEXPECTED_ERROR',
         message: 'Unexpected error during trade-in: $e',
-      );
-    }
-  }
-
-  /// Retrieves cached device diagnostic information.
-  ///
-  /// Returns a [Future] that completes with a map containing device
-  /// diagnostic data such as model, storage, battery health, etc.
-  ///
-  /// The returned map structure is platform-specific but typically includes:
-  /// ```
-  /// {
-  ///   'deviceModel': String,
-  ///   'storageCapacity': String,
-  ///   'batteryHealth': String,
-  ///   ...
-  /// }
-  /// ```
-  ///
-  /// Throws a [PlatformException] if the native operation fails or
-  /// if no cached diagnostics are available.
-  Future<Map<String, dynamic>> getDeviceInfo() async {
-    try {
-      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>(
-        'getDeviceInfo',
-      );
-
-      if (result == null) {
-        throw PlatformException(
-          code: 'NULL_RESULT',
-          message: 'Native method returned null result',
-        );
-      }
-
-      return _convertToStringDynamicMap(result);
-    } on PlatformException catch (e) {
-      throw PlatformException(
-        code: e.code,
-        message: 'Failed to get device info: ${e.message}',
-        details: e.details,
-      );
-    } catch (e) {
-      throw PlatformException(
-        code: 'UNEXPECTED_ERROR',
-        message: 'Unexpected error getting device info: $e',
       );
     }
   }

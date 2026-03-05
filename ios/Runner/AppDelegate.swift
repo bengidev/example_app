@@ -8,14 +8,13 @@ import TradeInFramework
   private enum Channel {
     static let name = "com.example.tradein/channel"
     static let startTradeIn = "startTradeIn"
-    static let getDeviceInfo = "getDeviceInfo"
   }
 
   private var methodChannel: FlutterMethodChannel?
   private var pendingResult: FlutterResult?
-  private var latestProcessResults: [[String: Any]]?
-  private var latestDescriptionsByIndex: [Int: [String: String]] = [:]
-  private var betaTestViewController: UIViewController?
+  private var activeSessionID: UUID?
+  private var activeResultsByIndex: [Int: [String: Any]] = [:]
+  private var activeAnalyzer: DeviceTestViewController?
   private var isFinishingFromFinishTest = false
 
   override func application(
@@ -62,8 +61,6 @@ import TradeInFramework
       switch call.method {
       case Channel.startTradeIn:
         self.handleStartTradeIn(result: result)
-      case Channel.getDeviceInfo:
-        self.handleGetDeviceInfo(result: result)
       default:
         result(FlutterMethodNotImplemented)
       }
@@ -89,96 +86,115 @@ import TradeInFramework
       return
     }
 
-    latestProcessResults = nil
-    latestDescriptionsByIndex = [:]
+    resetFlowState(clearPendingResult: true)
+
+    let sessionID = UUID()
+    activeSessionID = sessionID
     pendingResult = result
+    activeResultsByIndex = [:]
 
-    let betaTest = TradeIn.createDeviceTestAnalyzer(isFlutterCaller: true, testEngineType: .beta)
-    betaTest.onDidCompleteTest = { [weak self] result in
-      self?.latestDescriptionsByIndex[result.index] = result.descriptions
-    }
-    betaTest.onDidRetryTest = { [weak self] result in
-      self?.latestDescriptionsByIndex[result.index] = result.descriptions
-    }
-    betaTest.onDidCompleteAllTests = { [weak self] results in
-      for result in results {
-        self?.latestDescriptionsByIndex[result.index] = result.descriptions
-      }
-    }
-    betaTest.delegate = self
-    betaTest.title = "Device Diagnostics"
-    betaTest.navigationItem.hidesBackButton = false
+    let analyzer = TradeIn.createDeviceTestAnalyzer(isFlutterCaller: true, testEngineType: .beta)
+    configureCallbacks(for: analyzer, sessionID: sessionID)
+    analyzer.title = "Device Diagnostics"
+    analyzer.navigationItem.hidesBackButton = false
 
-    betaTestViewController = betaTest
+    activeAnalyzer = analyzer
     navigationController.delegate = self
-    navigationController.pushViewController(betaTest, animated: true)
+    navigationController.pushViewController(analyzer, animated: true)
   }
 
-  private func handleGetDeviceInfo(result: @escaping FlutterResult) {
-    if let response = buildResponseFromLatestResults() {
-      result(response)
-      return
+  private func configureCallbacks(for analyzer: DeviceTestViewController, sessionID: UUID) {
+    analyzer.onDidCompleteTest = { [weak self] result in
+      self?.upsertResult(result, sessionID: sessionID)
     }
+    analyzer.onDidRetryTest = { [weak self] result in
+      self?.upsertResult(result, sessionID: sessionID)
+    }
+    analyzer.onDidCompleteAllTests = { [weak self] results in
+      self?.upsertResults(results, sessionID: sessionID)
+      self?.setBackButtonHidden(false, sessionID: sessionID)
+    }
+    analyzer.onWillStartAllTests = { [weak self] in
+      self?.setBackButtonHidden(true, sessionID: sessionID)
+    }
+    analyzer.onWillFinishFromFlutter = { [weak self] in
+      self?.finishFlowFromFramework(sessionID: sessionID)
+    }
+    analyzer.delegate = nil
+  }
 
-    result(FlutterError(
-      code: "NO_DATA",
-      message: "No cached device info available. Run startTradeIn first.",
-      details: nil
-    ))
+  private func isCurrentSession(_ sessionID: UUID) -> Bool {
+    activeSessionID == sessionID
   }
 
   private func mapState(_ state: DeviceTestCardState) -> String {
     state == .success ? "success" : "failed"
   }
 
-  private func buildResultEntry(
-    index: Int,
-    title: String,
-    state: DeviceTestCardState,
-    descriptions: [String: String]? = nil
-  ) -> [String: Any] {
+  private func buildResultEntry(from result: DeviceTestProcessResult) -> [String: Any] {
     var entry: [String: Any] = [
-      "index": index,
-      "title": title,
-      "state": mapState(state)
+      "index": result.index,
+      "title": result.title,
+      "state": mapState(result.state)
     ]
 
-    if let descriptions {
-      entry["descriptions"] = descriptions
+    if !result.descriptions.isEmpty {
+      entry["descriptions"] = result.descriptions
     }
 
     return entry
   }
 
-  private func sortedResults(_ results: [[String: Any]]) -> [[String: Any]] {
-    results.sorted { lhs, rhs in
-      let left = lhs["index"] as? Int ?? Int.max
-      let right = rhs["index"] as? Int ?? Int.max
-      return left < right
+  private func upsertResult(_ result: DeviceTestProcessResult, sessionID: UUID) {
+    guard isCurrentSession(sessionID) else {
+      return
+    }
+
+    activeResultsByIndex[result.index] = buildResultEntry(from: result)
+  }
+
+  private func upsertResults(_ results: [DeviceTestProcessResult], sessionID: UUID) {
+    guard isCurrentSession(sessionID) else {
+      return
+    }
+
+    for result in results {
+      activeResultsByIndex[result.index] = buildResultEntry(from: result)
     }
   }
 
-  private func buildResponseFromLatestResults() -> [String: Any]? {
-    guard let results = latestProcessResults else {
-      return nil
-    }
+  private func sortedResults() -> [[String: Any]] {
+    activeResultsByIndex.keys.sorted().compactMap { activeResultsByIndex[$0] }
+  }
 
+  private func buildCompletedResponse() -> [String: Any] {
     return [
-      "results": results,
+      "results": sortedResults(),
       "completed": true
     ]
   }
 
-  private func clearFlowState(clearPendingResult: Bool) {
+  private func resetFlowState(clearPendingResult: Bool) {
+    activeAnalyzer?.onDidCompleteTest = nil
+    activeAnalyzer?.onDidRetryTest = nil
+    activeAnalyzer?.onDidCompleteAllTests = nil
+    activeAnalyzer?.onWillStartAllTests = nil
+    activeAnalyzer?.onWillFinishFromFlutter = nil
+    activeAnalyzer?.delegate = nil
+
     if clearPendingResult {
       pendingResult = nil
     }
-    latestProcessResults = nil
-    latestDescriptionsByIndex = [:]
-    betaTestViewController = nil
+    activeSessionID = nil
+    activeResultsByIndex = [:]
+    activeAnalyzer = nil
   }
 
-  private func sendCancelledResponse(backButton: Bool) {
+  private func sendCancelledResponse(sessionID: UUID, backButton: Bool) {
+    guard isCurrentSession(sessionID), let callback = pendingResult else {
+      return
+    }
+
     var response: [String: Any] = [
       "results": [],
       "completed": false,
@@ -189,77 +205,67 @@ import TradeInFramework
       response["backButton"] = true
     }
 
-    pendingResult?(response)
-    clearFlowState(clearPendingResult: true)
+    callback(response)
+    resetFlowState(clearPendingResult: true)
   }
 
-  private func sendNoResultsError() {
-    pendingResult?(FlutterError(
+  private func sendNoResultsError(sessionID: UUID) {
+    guard isCurrentSession(sessionID), let callback = pendingResult else {
+      return
+    }
+
+    callback(FlutterError(
       code: "NO_RESULTS",
       message: "No diagnostic results available",
       details: nil
     ))
-    pendingResult = nil
+    resetFlowState(clearPendingResult: true)
   }
 
-  private func sendLatestResultsToFlutter() {
-    guard pendingResult != nil else {
+  private func sendLatestResultsToFlutter(sessionID: UUID) {
+    guard isCurrentSession(sessionID), let callback = pendingResult else {
       return
     }
 
-    guard let response = buildResponseFromLatestResults() else {
-      sendNoResultsError()
+    if activeResultsByIndex.isEmpty {
+      sendNoResultsError(sessionID: sessionID)
       return
     }
 
-    pendingResult?(response)
-    clearFlowState(clearPendingResult: true)
+    callback(buildCompletedResponse())
+    resetFlowState(clearPendingResult: true)
   }
 
-  private func updateLatestProcessResult(
-    at index: Int,
-    title: String,
-    state: DeviceTestCardState,
-    descriptions: [String: String]? = nil
-  ) {
-    var currentResults = latestProcessResults ?? []
-    let updated = buildResultEntry(index: index, title: title, state: state, descriptions: descriptions)
-
-    if let existingIndex = currentResults.firstIndex(where: { ($0["index"] as? Int) == index }) {
-      currentResults[existingIndex] = updated
-    } else {
-      currentResults.append(updated)
-      currentResults = sortedResults(currentResults)
-    }
-
-    latestProcessResults = currentResults
-  }
-
-  private func mergeCompletedResultsIfNeeded(_ results: [[String: Any]]) {
-    var currentResults = latestProcessResults ?? []
-
-    for result in results {
-      guard let index = result["index"] as? Int else {
-        continue
-      }
-
-      if currentResults.firstIndex(where: { ($0["index"] as? Int) == index }) == nil {
-        currentResults.append(result)
-      }
-    }
-
-    latestProcessResults = sortedResults(currentResults)
-  }
-
-  private func setBackButtonHidden(_ hidden: Bool, animated: Bool = true) {
-    guard let betaTestViewController else { return }
-
-    guard animated, let navigationBar = betaTestViewController.navigationController?.navigationBar else {
-      betaTestViewController.navigationItem.setHidesBackButton(hidden, animated: animated)
+  private func finishFlowFromFramework(sessionID: UUID) {
+    guard isCurrentSession(sessionID) else {
       return
     }
 
-    betaTestViewController.navigationItem.setHidesBackButton(hidden, animated: animated)
+    guard let navigationController = window?.rootViewController as? UINavigationController else {
+      sendLatestResultsToFlutter(sessionID: sessionID)
+      return
+    }
+
+    isFinishingFromFinishTest = true
+    navigationController.popViewController(animated: true)
+    navigationController.setNavigationBarHidden(true, animated: true)
+
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+      guard let self = self else { return }
+      self.sendLatestResultsToFlutter(sessionID: sessionID)
+      self.isFinishingFromFinishTest = false
+    }
+  }
+
+  private func setBackButtonHidden(_ hidden: Bool, sessionID: UUID, animated: Bool = true) {
+    guard isCurrentSession(sessionID), let activeAnalyzer else { return }
+
+    guard animated, let navigationBar = activeAnalyzer.navigationController?.navigationBar else {
+      activeAnalyzer.navigationItem.setHidesBackButton(hidden, animated: animated)
+      return
+    }
+
+    activeAnalyzer.navigationItem.setHidesBackButton(hidden, animated: animated)
     navigationBar.layoutIfNeeded()
   }
 }
@@ -271,7 +277,9 @@ extension AppDelegate: UINavigationControllerDelegate {
     willShow viewController: UIViewController,
     animated: Bool
   ) {
-    guard viewController is FlutterViewController, pendingResult != nil else {
+    guard viewController is FlutterViewController,
+      let sessionID = activeSessionID,
+      pendingResult != nil else {
       return
     }
 
@@ -280,7 +288,7 @@ extension AppDelegate: UINavigationControllerDelegate {
     }
 
     navigationController.setNavigationBarHidden(true, animated: false)
-    sendCancelledResponse(backButton: true)
+    sendCancelledResponse(sessionID: sessionID, backButton: true)
   }
 
   func navigationController(
@@ -299,68 +307,8 @@ extension AppDelegate: UINavigationControllerDelegate {
 extension AppDelegate: UIAdaptivePresentationControllerDelegate {
 
   func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
-    if pendingResult != nil {
-      sendCancelledResponse(backButton: false)
-    }
-  }
-}
-
-extension AppDelegate: DeviceTestDelegate {
-
-  func didCompleteTest(
-    testEngineType _: TestEngineType,
-    at index: Int,
-    title: String,
-    with state: DeviceTestCardState
-  ) {
-    let descriptions = latestDescriptionsByIndex[index] ?? [:]
-    print("didCompleteTest descriptions [\(index)] \(title): \(descriptions)")
-    updateLatestProcessResult(at: index, title: title, state: state, descriptions: descriptions)
-  }
-
-  func didCompleteAllTests(
-    testEngineType _: TestEngineType,
-    with results: [DeviceTestProcessResult]
-  ) {
-    let completedResults = results.map { result in
-      buildResultEntry(
-        index: result.index,
-        title: result.title,
-        state: result.state,
-        descriptions: result.descriptions
-      )
-    }
-    mergeCompletedResultsIfNeeded(completedResults)
-    setBackButtonHidden(false)
-  }
-
-  func didRetryTest(
-    testEngineType _: TestEngineType,
-    at index: Int,
-    title: String,
-    with state: DeviceTestCardState
-  ) {
-    let descriptions = latestDescriptionsByIndex[index] ?? [:]
-    updateLatestProcessResult(at: index, title: title, state: state, descriptions: descriptions)
-  }
-
-  func willStartAllTests(testEngineType _: TestEngineType) {
-    setBackButtonHidden(true)
-  }
-
-  func willFinishDeviceTestFromFlutter(testEngineType _: TestEngineType) {
-    guard let navigationController = window?.rootViewController as? UINavigationController else {
-      return
-    }
-
-    isFinishingFromFinishTest = true
-    navigationController.popViewController(animated: true)
-    navigationController.setNavigationBarHidden(true, animated: true)
-
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-      guard let self = self else { return }
-      self.sendLatestResultsToFlutter()
-      self.isFinishingFromFinishTest = false
+    if let sessionID = activeSessionID, pendingResult != nil {
+      sendCancelledResponse(sessionID: sessionID, backButton: false)
     }
   }
 }
